@@ -1,3 +1,4 @@
+package eu.spitfire_project;
 
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;

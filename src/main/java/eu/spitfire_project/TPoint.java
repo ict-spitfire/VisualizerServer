@@ -1,3 +1,4 @@
+package eu.spitfire_project;
 public class TPoint {
     public double x, y;
 

@@ -1,3 +1,4 @@
+package eu.spitfire_project;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;

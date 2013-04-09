@@ -1,3 +1,4 @@
+package eu.spitfire_project;
 /*
  * Copyright 2011 The Netty Project
  *
