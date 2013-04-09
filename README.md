@@ -1,6 +1,6 @@
 # SPITFIRE Demo  Visualization GUI
 
-## CLONE
+## Clone
 
 ```
 git clone git@github.com:ict-spitfire/VisualizerServer.git
