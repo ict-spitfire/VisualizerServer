@@ -1,19 +1,45 @@
-import javax.imageio.ImageIO;
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.security.CodeSource;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
+
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JMenuItem;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 
 public class THouseView extends JPanel {
-    private class Reading {
+
+	private static final long serialVersionUID = 1L;
+
+	private class Reading {
 		public long time;
 		public double value;
 		public Reading(long time, double value) {
@@ -21,7 +47,7 @@ public class THouseView extends JPanel {
 			this.value = value;
 		}
 	}
-	
+
 	private class SensorData {
 		public String ipv6Addr = null;
 		public String macAddr = null;
@@ -31,7 +57,7 @@ public class THouseView extends JPanel {
 		public double maxValue, minValue;
 		public long timeL, timeR;
 		public int senID;
-		
+
 		public SensorData(int senID, String macAddr, String ipv6Addr, TPoint loc, String FOI) {
 			this.senID = senID;
 			this.ipv6Addr = ipv6Addr;
@@ -42,7 +68,7 @@ public class THouseView extends JPanel {
 			maxValue = Double.MIN_VALUE;
 			minValue = Double.MAX_VALUE;
 		}
-		
+
 		private void updateReadings(Reading r) {
 			readings.enList(r);
 			timeL = ((Reading)(readings.get(0))).time;
@@ -56,28 +82,26 @@ public class THouseView extends JPanel {
 			}
 		}
 	}
-	
+
 	private class Area {
 		public double x1, y1, w, h;
-		public String label;
-		public Area(double x1, double y1, double w, double h, String label) {
+		public Area(double x1, double y1, double w, double h) {
 			this.x1 = x1;
 			this.y1 = y1;
 			this.w = w;
 			this.h = h;
-			this.label = label;
 		}
 	}
-	
+
 	//GUI stuffs
     private JFrame appFrame;
 	private JPopupMenu popView = new JPopupMenu();
 	private JMenuItem popItmStart = new JMenuItem("Start visualizer");
 	private JMenuItem popItmPause = new JMenuItem("Pause visualizer");
 	private JMenuItem popItmResume = new JMenuItem("Resume visualizer");
-	
-	private BufferedImage tempImg, dtImg;
-	
+
+	private BufferedImage tempImg;
+
 	//Core stuffs
 	private boolean pause;
 	private long startTime;
@@ -89,12 +113,12 @@ public class THouseView extends JPanel {
 	private double maxLux = 1500;
 	private double minLux = 0;
     private Random random = new Random();
-	
+
 	//Coordinates of the areas
-	Area LivingRoom = new Area(4, 2, 41, 95, "Living-Room");
-	Area BedRoom = new Area(58, 2, 58, 58, "Bed-Room");
-	Area Kitchen = new Area(58, 62, 58, 37, "Kitchen");
-	
+	Area LivingRoom = new Area(4, 2, 41, 95);
+	Area BedRoom = new Area(58, 2, 58, 58);
+	Area Kitchen = new Area(58, 62, 58, 37);
+
 	private int simW, simH, areaW, areaH;
 	private double ratioW, ratioH;
 	int graphW = 10; int graphH = 6;
@@ -104,14 +128,14 @@ public class THouseView extends JPanel {
 	SensorData clickNode = null;
 	boolean draggingNode = false;
 	boolean draggingTemperature = false;
-	
+
 	private TList sensors = null;
 	private TList images = null;
 	private int imgIndex = 60;
-	
+
 	public THouseView(JFrame appFrame) {
 		setBackground(Color.WHITE);
-		
+
 		pause = true;
 
 		//Initialize components
@@ -119,60 +143,101 @@ public class THouseView extends JPanel {
 		popView.add(popItmStart);
 		popView.add(popItmPause);
 		popView.add(popItmResume);
-		
+
 		popItmStart.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent evt) { popItmStartClick(evt); } });
 		popItmPause.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent evt) { popItmPauseClick(evt); } });
 		popItmResume.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent evt) { popItmResumeClick(evt); } });
-		
+
 		//Resize response
 		addComponentListener(new ComponentAdapter() {
 			public void componentResized(ComponentEvent evt) {	netViewResized(evt); } });
-		
+
 		//Mouse events for the netView
 		addMouseListener(new MouseAdapter() {
 			public void mousePressed(MouseEvent evt) { netViewMousePressed(evt); }
 			public void mouseReleased(MouseEvent evt) { netViewMouseReleased(evt); }
 			public void mouseClicked(MouseEvent evt) { netViewMouseClicked(evt); }
 		});
-		
+
 		addMouseMotionListener(new MouseMotionAdapter() {
 			public void mouseDragged(MouseEvent evt) { netViewMouseDragged(evt); }
 			public void mouseMoved(MouseEvent evt) { netViewMouseMoved(evt); }
 		});
-		
+
 		//Projection area
 		areaW = 120; //1,2m
 		areaH = 100; //1m
-		
+
 		//Initialize the sensor list
 		sensors = new TList();
-		
+
 		//Fill in the list of the images of the house
 		images = new TList();
-		//String path = "/home/spitfire/Visualizer/houseimg";
-		String path = "/home/spitfire/impl/VisualizerServer/images";
-	  File folder = new File(path);
-	  File[] listOfFiles = folder.listFiles(); 
-	  Arrays.sort(listOfFiles);
-	  for (int i = 0; i<listOfFiles.length; i++) {
-	  	if (listOfFiles[i].isFile()) {
-	  		images.enList(path+"/"+listOfFiles[i].getName());
-	  	}
-	  }
-	  
-	  //Load other images
-	  //String tempImgPath = "/home/spitfire/Visualizer/img/temp.png";
-	  String tempImgPath = "/home/spitfire/impl/VisualizerServer/images/temp.png";
-	  try {
-	    tempImg = ImageIO.read(new File(tempImgPath));
-    } catch (IOException e) { e.printStackTrace(); }
-	  /*String dtImgPath = "/home/tduccuong/Dropbox/Projects/Java/IoTChallenge/img/datetime.png";
-	  try {
-	    dtImg = ImageIO.read(new File(dtImgPath));
-    } catch (IOException e) { e.printStackTrace(); }*/
+
+		final String path = "img/house";
+
+		try {
+			// Load all Files as InputStream
+			final CodeSource src = THouseView.class.getProtectionDomain()
+					.getCodeSource();
+			final URL jar = src.getLocation();
+			if (new File(jar.getFile()).isFile()) {
+				final ZipFile zipFile = new ZipFile(jar.getFile());
+				final ZipInputStream zip = new ZipInputStream(jar.openStream());
+				ZipEntry entry;
+
+				// Read files as a List
+				List<String> fileList = new LinkedList<String>();
+				while ((entry = zip.getNextEntry()) != null) {
+					if (entry.getName().startsWith(path) && !entry.isDirectory()) {
+						fileList.add(entry.getName());
+					}
+				}
+				zipFile.close();
+
+				// Convert to an Array
+				String[] fileArray = new String[fileList.size()];
+				for (int i = 0; i < fileList.size(); i++) {
+					fileArray[i] = fileList.get(i);
+				}
+
+				Arrays.sort(fileArray);
+
+				for (String file : fileArray) {
+					BufferedImage img = ImageIO.read(ClassLoader.getSystemResourceAsStream(file));
+					images.enList(img);
+				}
+			}
+
+			// E.g. run in Eclipse
+			else {
+				File folder = null;
+				try {
+					folder = new File(ClassLoader.getSystemResource(path).toURI());
+				} catch (URISyntaxException e) { }
+				File[] listOfFiles = folder.listFiles();
+				Arrays.sort(listOfFiles);
+				for (int i = 0; i < listOfFiles.length; i++) {
+					if (listOfFiles[i].isFile()) {
+						File f = new File(folder.getAbsolutePath() + "/" + listOfFiles[i].getName());
+						BufferedImage img = ImageIO.read(f);
+						images.enList(img);
+					}
+				}
+			}
+		} catch (IOException e) {
+			// TODO: handle exception
+		}
+
+		try {
+			tempImg = ImageIO.read(ClassLoader
+					.getSystemResourceAsStream("img/temp.png"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void popItmStartClick(ActionEvent evt) {
@@ -191,7 +256,7 @@ public class THouseView extends JPanel {
         } catch (MalformedURLException e) {	e.printStackTrace(); }
         catch (IOException e) {	e.printStackTrace();	}
 	}
-	
+
 	public void popItmPauseClick(ActionEvent evt) {
 		pause = true;
 	}
@@ -199,17 +264,17 @@ public class THouseView extends JPanel {
 	public void popItmResumeClick(ActionEvent evt) {
 		pause = false;
 	}
-	
+
 	public void netViewResized(ComponentEvent evt) {
 		resizedResponse();
 	}
-	
-	public void netViewMouseClicked(MouseEvent evt) { 
+
+	public void netViewMouseClicked(MouseEvent evt) {
 		if (evt.getButton() == MouseEvent.BUTTON3) {
 			popView.show(evt.getComponent(), evt.getX(), evt.getY());
 		}
 	}
-	
+
 	public void netViewMousePressed(MouseEvent evt) {
 		if (evt.getButton() == MouseEvent.BUTTON1) {
 			clickNode = getSensorAt(evt.getX(), evt.getY());
@@ -222,7 +287,7 @@ public class THouseView extends JPanel {
 			if (d < 5) draggingTemperature = true;
 		}
 	}
-	
+
 	public void netViewMouseReleased(MouseEvent evt) {
 		if (draggingNode && clickNode != null) {
 			relocateSensor(clickNode, evt.getX(), evt.getY());
@@ -232,7 +297,7 @@ public class THouseView extends JPanel {
 		if (draggingTemperature)
 			draggingTemperature = false;
 	}
-	
+
 	public void netViewMouseDragged(MouseEvent evt) {
 		if (clickNode != null) {
 			Graphics gr = getGraphics();
@@ -246,11 +311,11 @@ public class THouseView extends JPanel {
 			repaint();
 		}
 	}
-	
+
 	public void netViewMouseMoved(MouseEvent evt) {
 	}
-	
-	
+
+
 	//-------------------------Graphic stuff-------------------------
 	public void relocateSensor(SensorData sd, int X, int Y) {
 		double realX = (double)X/ratioW;
@@ -259,7 +324,7 @@ public class THouseView extends JPanel {
 		sd.loc.y = realY;
 		repaint();
 	}
-	
+
 	public SensorData getSensorAt(int simX, int simY) {
 		SensorData sd = null;
 		double realX = (double)simX/ratioW;
@@ -275,7 +340,7 @@ public class THouseView extends JPanel {
 		}
 		return sd;
 	}
-	
+
 	public void resizedResponse() {
 		simW = this.getBounds().width;
 		simH = this.getBounds().height;
@@ -283,11 +348,11 @@ public class THouseView extends JPanel {
 		ratioH = (double)simH/areaH;
 		repaint();
 	}
-	
+
 	public void drawString(Graphics2D gr2d, int x, int y, String st, double fontSize, Color txtColor, Color brdColor) {
 		int FontSize = (int)(fontSize*ratioH);
 		Font font = new Font("Arial", Font.BOLD, FontSize);
-		FontMetrics fm = getFontMetrics(font); 
+		FontMetrics fm = getFontMetrics(font);
 		gr2d.setFont(font);
 		int sw = fm.stringWidth(st);
 		int X = x-sw/2;
@@ -300,29 +365,29 @@ public class THouseView extends JPanel {
     gr2d.setColor(txtColor);
     gr2d.drawString(st, X, Y);
 	}
-	
+
 	public void drawSensor(Graphics2D gr2d, SensorData sd) {
 		//simulated coordinate
-		int W = (int)(graphW*ratioW); 
+		int W = (int)(graphW*ratioW);
 		int H = (int)(graphH*ratioH);
 		int X = (int)(sd.loc.x*ratioW);
 		int Y = (int)(sd.loc.y*ratioH);
 		int x1 = X-W/2; int y1 = Y-H/2;
-		int x2 = x1+W; int y2 = y1+H;
-		
+		int x2 = x1+W; //int y2 = y1+H;
+
 		//Draw the graph area
 		gr2d.setColor(Color.WHITE);
 		gr2d.fillRect(x1, y1, W, H);
 		gr2d.setColor(Color.BLUE);
 		gr2d.drawRect(x1-1, y1-1, W+2, H+2);
-		
+
 		//Draw the sensor readings
 		//double vratio = (double)H/(sd.maxValue-sd.minValue);
 		int pad = 3;
 		double vratio = (double)(H-2*pad)/(maxLux-minLux);
 		double tratio = (double)W/(double)(numberOfImagesPerDay*realTimeTick);
 		gr2d.setColor(Color.RED);
-		
+
 		//Reading re = (Reading)sd.readings.get(0);
 		//long t = sd.timeR-re.time;
 		//if (sd.ipv6Addr.indexOf("8e7f")>0)
@@ -348,12 +413,12 @@ public class THouseView extends JPanel {
 				ydraw_old = ydraw_new;
 			}
 		}
-		
+
 		//Draw other information
 		double yFOI = sd.loc.y - graphH/2+0.2;
 		drawString(gr2d, (int)(sd.loc.x*ratioW), (int)(yFOI*ratioH), sd.FOI, 1.8, Color.BLUE, Color.WHITE);
 		double xIPv6 = sd.loc.x;
-		double yIPv6 = sd.loc.y + graphH/2+0.1; 
+		double yIPv6 = sd.loc.y + graphH/2+0.1;
 		drawString(gr2d, (int)(xIPv6*ratioW), (int)(yIPv6*ratioH), "IPv6: '..."+
 							sd.ipv6Addr.substring(sd.ipv6Addr.length()-5)+"'", 2, Color.YELLOW, Color.BLACK);
 	}
@@ -378,7 +443,7 @@ public class THouseView extends JPanel {
 		drawString(gr2d, curTempX+5, curTempY+10, String.format("%.2f", light)+" lux", 2, Color.RED, Color.WHITE);
 		*/
 	}
-	
+
 	public void drawDateTime(Graphics2D gr2d, double dateX, double dateY, int DD, int HH, int MM) {
 		//gr2d.drawImage(dtImg, X, Y, null);
 		gr2d.setColor(Color.RED);
@@ -389,11 +454,12 @@ public class THouseView extends JPanel {
 		drawString(gr2d, timex, datey, String.format("DAY - %d", DD), 2, Color.RED, Color.WHITE);
 		drawString(gr2d, timex, timey, String.format("TIME - %02d:%02d", HH, MM), 2, Color.RED, Color.WHITE);
 	}
-	
-	@Override 
+
+	@Override
 	public void paintComponent(Graphics g) {
-		String imgFile = (String)images.get(imgIndex);
-		ImageIcon imageicon = new ImageIcon(imgFile);
+
+		BufferedImage bufferedImage = (BufferedImage) images.get(imgIndex);
+		ImageIcon imageicon = new ImageIcon(bufferedImage);
 		Image image = imageicon.getImage();
 		super.paintComponent(g);
 		if (image != null)
@@ -407,23 +473,23 @@ public class THouseView extends JPanel {
 		//gr2d.drawRect((int)(LivingRoom.x1*ratioW), (int)(LivingRoom.y1*ratioH), (int)(LivingRoom.w*ratioW), (int)(LivingRoom.h*ratioH));
 		//gr2d.drawRect((int)(BedRoom.x1*ratioW), (int)(BedRoom.y1*ratioH), (int)(BedRoom.w*ratioW), (int)(BedRoom.h*ratioH));
 		//gr2d.drawRect((int)(Kitchen.x1*ratioW), (int)(Kitchen.y1*ratioH), (int)(Kitchen.w*ratioW), (int)(Kitchen.h*ratioH));
-		
+
 		//Draw temperature
 		drawTemperature(gr2d, tempX, tempY);
-		
+
 		//Draw date and time
 		double dateX = tempX;
 		double dateY = 5;
 		//drawDateTime(gr2d, dateX, dateY, simTimeD, simTimeH, simTimeM);
 		drawDateTime(gr2d, dateX, dateY, simTimeD, simTimeH, simTimeM);
-		
+
 		//Draw sensors
 		for (int i=0; i<sensors.len(); i++) {
 			SensorData sd = (SensorData)sensors.get(i);
 				drawSensor(gr2d, sd);
 		}
-	}		
-	
+	}
+
 	private SensorData searchSensor(int sensorID) {
     SensorData rs = null;
     int ind = 0;
@@ -436,7 +502,7 @@ public class THouseView extends JPanel {
     }
     return rs;
 }
-	
+
 	private int searchSensorMAC(String mac) {
 	    int ind = 0;
 	    for (; ind<sensors.len(); ind++) {
@@ -447,7 +513,7 @@ public class THouseView extends JPanel {
 	    }
 	    return ind;
 	}
-	
+
 	//-----------------Methods to update simulation info-----------------------------
 	public void startUpdateInfo() {
 

@@ -49,7 +49,7 @@ public class VisualizerServer {
     public static void main(String args[]) {
         appFrame.setMinimumSize(new Dimension(800, 480));
         appFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+        //Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         houseView = new THouseView(appFrame);
         appFrame.add(houseView);
         appFrame.pack();
