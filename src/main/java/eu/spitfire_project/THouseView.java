@@ -21,6 +21,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.security.CodeSource;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -59,8 +60,7 @@ public class THouseView extends JPanel {
 		public long timeL, timeR;
 		public int senID;
 
-		public SensorData(int senID, String macAddr, String ipv6Addr, TPoint loc, String FOI) {
-			this.senID = senID;
+		public SensorData(String macAddr, String ipv6Addr, TPoint loc, String FOI) {
 			this.ipv6Addr = ipv6Addr;
 			this.macAddr = macAddr;
 			this.FOI = FOI;
@@ -70,6 +70,12 @@ public class THouseView extends JPanel {
 			minValue = Double.MAX_VALUE;
 		}
 
+		public void clearData() {
+			this.readings = new TList(numberOfImagesPerDay); //Maximum number of readings
+			maxValue = Double.MIN_VALUE;
+			minValue = Double.MAX_VALUE;
+		}
+		
 		private void updateReadings(Reading r) {
 			readings.enList(r);
 			timeL = ((Reading)(readings.get(0))).time;
@@ -86,6 +92,7 @@ public class THouseView extends JPanel {
 
 	private class Area {
 		public double x1, y1, w, h;
+		
 		public Area(double x1, double y1, double w, double h) {
 			this.x1 = x1;
 			this.y1 = y1;
@@ -104,6 +111,12 @@ public class THouseView extends JPanel {
 	private BufferedImage tempImg;
 
 	//Core stuffs
+	private final String NewSensor = "a6c";
+	private final String LivingRoomSensor1 = "8e7f";
+	private final String LivingRoomSensor2 = "2304";
+	private final String BedroomSensor1 = "a88";
+	private final String BedroomSensor2 = "a88";
+	
 	private boolean pause;
 	private long startTime;
 	private int numberOfImagesPerDay = 96;
@@ -113,19 +126,21 @@ public class THouseView extends JPanel {
 	private double maxTemperature = 40;
 	private double maxLux = 1500;
 	private double minLux = 0;
-    private Random random = new Random();
+	private String liveAnno;
+  private Random random = new Random();
+  private SensorData floatingSensor = null;  
 
 	//Coordinates of the areas
-	Area LivingRoom = new Area(4, 2, 41, 95);
-	Area BedRoom = new Area(58, 2, 58, 58);
-	Area Kitchen = new Area(58, 62, 58, 37);
-
+	Area LivingRoom = new Area(25, 16, 48, 54);
+	Area BedRoom = new Area(77, 16, 32, 54);
+	Area Yard = new Area(1, 10, 17, 78);
+		
 	private int simW, simH, areaW, areaH;
 	private double ratioW, ratioH;
 	int graphW = 10; int graphH = 6;
 	int paddingy = 5;
 	int senRadius = 2;
-	double tempX = 52, tempY = 30;
+	double tempX = 70, tempY = 30;
 	SensorData clickNode = null;
 	boolean draggingNode = false;
 	boolean draggingTemperature = false;
@@ -445,15 +460,18 @@ public class THouseView extends JPanel {
 		*/
 	}
 
-	public void drawDateTime(Graphics2D gr2d, double dateX, double dateY, int DD, int HH, int MM) {
+	public void drawDateTimeTemp(Graphics2D gr2d, double dateX, double dateY, int DD, int HH, int MM) {
 		//gr2d.drawImage(dtImg, X, Y, null);
 		gr2d.setColor(Color.RED);
 		int timex = (int)(dateX*ratioW);
 		int timey = (int)((dateY+2.5)*ratioH);
 		int datey = (int)((dateY)*ratioH);
+		int tempy = (int)((dateY+5)*ratioH);
+		int curTemp = (int)currentTemperature;
 		//drawString(gr2d, datex, datey, String.format("TIME: %d:%d", HH, MM), 2, Color.BLACK, new Color(153, 175, 162));
 		drawString(gr2d, timex, datey, String.format("DAY - %d", DD), 2, Color.RED, Color.WHITE);
 		drawString(gr2d, timex, timey, String.format("TIME - %02d:%02d", HH, MM), 2, Color.RED, Color.WHITE);
+		drawString(gr2d, timex, tempy, String.format("TEMPERATURE - %d", curTemp)+"°C", 2.5, Color.RED, Color.WHITE);
 	}
 
 	@Override
@@ -470,19 +488,19 @@ public class THouseView extends JPanel {
 		Graphics2D gr2d = (Graphics2D)g;
 
 		//Draw room boundaries
-		//gr2d.setColor(Color.RED);
-		//gr2d.drawRect((int)(LivingRoom.x1*ratioW), (int)(LivingRoom.y1*ratioH), (int)(LivingRoom.w*ratioW), (int)(LivingRoom.h*ratioH));
-		//gr2d.drawRect((int)(BedRoom.x1*ratioW), (int)(BedRoom.y1*ratioH), (int)(BedRoom.w*ratioW), (int)(BedRoom.h*ratioH));
-		//gr2d.drawRect((int)(Kitchen.x1*ratioW), (int)(Kitchen.y1*ratioH), (int)(Kitchen.w*ratioW), (int)(Kitchen.h*ratioH));
+		gr2d.setColor(Color.RED);
+		gr2d.drawRect((int)(LivingRoom.x1*ratioW), (int)(LivingRoom.y1*ratioH), (int)(LivingRoom.w*ratioW), (int)(LivingRoom.h*ratioH));
+		gr2d.drawRect((int)(BedRoom.x1*ratioW), (int)(BedRoom.y1*ratioH), (int)(BedRoom.w*ratioW), (int)(BedRoom.h*ratioH));
+		gr2d.drawRect((int)(Yard.x1*ratioW), (int)(Yard.y1*ratioH), (int)(Yard.w*ratioW), (int)(Yard.h*ratioH));
 
 		//Draw temperature
-		drawTemperature(gr2d, tempX, tempY);
+		//drawTemperature(gr2d, tempX, tempY);
 
 		//Draw date and time
-		double dateX = tempX;
-		double dateY = 5;
+		double dateX = 70;
+		double dateY = 76;
 		//drawDateTime(gr2d, dateX, dateY, simTimeD, simTimeH, simTimeM);
-		drawDateTime(gr2d, dateX, dateY, simTimeD, simTimeH, simTimeM);
+		drawDateTimeTemp(gr2d, dateX, dateY, simTimeD, simTimeH, simTimeM);
 
 		//Draw sensors
 		for (int i=0; i<sensors.len(); i++) {
@@ -491,12 +509,12 @@ public class THouseView extends JPanel {
 		}
 	}
 
-	private SensorData searchSensor(int sensorID) {
+	private SensorData searchSensor(String mac) {
     SensorData rs = null;
     int ind = 0;
     for (; ind<sensors.len(); ind++) {
         SensorData sd = (SensorData)sensors.get(ind);
-        if (sd.senID == sensorID) {
+        if (sd.macAddr.equalsIgnoreCase(mac)) {
             rs = sd;
             break;
         }
@@ -504,22 +522,38 @@ public class THouseView extends JPanel {
     return rs;
 }
 
-	private int searchSensorMAC(String mac) {
-	    int ind = 0;
-	    for (; ind<sensors.len(); ind++) {
-	        SensorData sd = (SensorData)sensors.get(ind);
-	        if (sd.macAddr.equalsIgnoreCase(mac)) {
-	            break;
-	        }
-	    }
-	    return ind;
-	}
-
 	//-----------------Methods to update simulation info-----------------------------
 	public void startUpdateInfo() {
 
 	}
 
+	private double randomXLoc(Area a) {
+		return a.x1+random.nextDouble()*(a.w-2*graphW)+graphW;
+	}
+	
+	private double randomYLoc(Area a) {
+		return a.y1+random.nextDouble()*(a.h-(graphH+3*paddingy))+(graphH+3*paddingy)/2;
+	}
+	
+	private void deleteRemovedSensors(ArrayList<String> sl) {
+		TList listOfDeleted = new TList();
+		for (int i=0; i<sensors.len(); i++) {
+			SensorData sd = (SensorData)sensors.get(i);
+			String ss = null;
+			for (int j=0; j<sl.size(); j++)
+				if (sd.macAddr.equalsIgnoreCase(sl.get(j))) {
+					ss =sd.macAddr;
+					break;
+				}
+			if (ss == null) { //This sensor has been deleted at ssp
+				listOfDeleted.enList(sd);
+			}
+		}
+		
+		for (int i=0; i<listOfDeleted.len(); i++)
+			sensors.remove(listOfDeleted.get(i));
+	}
+	
 	public void update(String updateCommand) {
         System.out.println(" ----------- Updating... ------------------------");
 
@@ -531,7 +565,8 @@ public class THouseView extends JPanel {
         simTime = Integer.valueOf(parameter.getStrAt(0));
         imgIndex = Integer.valueOf(parameter.getStrAt(1));
         currentTemperature = Double.valueOf(parameter.getStrAt(2));
-        System.out.println("simTime: "+simTime+", imgIndex: "+imgIndex+", temp: "+currentTemperature);
+        liveAnno = parameter.getStrAt(3);
+        System.out.println("simTime: "+simTime+", imgIndex: "+imgIndex+", temp: "+currentTemperature+", liveAnno: "+liveAnno);
 
         int elapsedTimeS = (int)((double)(System.currentTimeMillis()-startTime)/(double)1000) % 60;
         int elapsedTimeM = (int)((double)(System.currentTimeMillis()-startTime)/(double)1000/(double)60) % 60;
@@ -543,18 +578,84 @@ public class THouseView extends JPanel {
         simTimeH = (int)((double)(simTime)/(double)60) % 24;
         simTimeD = (int)((double)(simTime)/(double)60/(double)24) % 24 + 1;
 
+        /*/Delete sensor that is deleted at SSP
+        ArrayList<String> sspSensorList = new ArrayList<String>();
+        for (int i=1; i<command.len(); i++) {
+            parameter = new TString(command.getStrAt(i), '|');
+            String macAddr = parameter.getStrAt(2);
+            sspSensorList.add(macAddr);
+        }
+        deleteRemovedSensors(sspSensorList);
+        */
+        
         //Sensor information
         for (int i=1; i<command.len(); i++) {
             parameter = new TString(command.getStrAt(i), '|');
             System.out.println("Parameter: <"+command.getStrAt(i)+">");
 
-            int sensorID = Integer.valueOf(parameter.getStrAt(0));
+            String status = parameter.getStrAt(0);
             String ipv6Addr = parameter.getStrAt(1);
             String macAddr = parameter.getStrAt(2);
             String FOI = parameter.getStrAt(3);
             long ts = Long.valueOf(parameter.getStrAt(4)).longValue();
             double vl = Double.valueOf(parameter.getStrAt(5)).doubleValue();
-            SensorData sd = searchSensor(sensorID);
+            SensorData sd = searchSensor(macAddr);
+            if (sd == null) {
+            	double x = 0, y = 0;
+              if (LivingRoomSensor1.equalsIgnoreCase(macAddr)) {
+                  x = randomXLoc(LivingRoom); 
+                  y = randomYLoc(LivingRoom);
+              } else if (LivingRoomSensor2.equalsIgnoreCase(macAddr)) {
+                  //x = 51.5; y = 65; //Living room bottom
+                  x = randomXLoc(LivingRoom); 
+                  y = randomYLoc(LivingRoom);
+              } else if (BedroomSensor1.equalsIgnoreCase(macAddr)) {
+                  //x = 51.5; y = 75; //Bedroom top
+              	x = randomXLoc(BedRoom); 
+                y = randomYLoc(BedRoom);
+              } else if (BedroomSensor2.equalsIgnoreCase(macAddr)) {
+                  //x = 51.5; y = 85; //Bedroom bottom
+              	x = randomXLoc(BedRoom); 
+                y = randomYLoc(BedRoom);
+              } else if (NewSensor.equalsIgnoreCase(macAddr)) { //The new sensor
+                  System.out.println("New node added");
+                  x = randomXLoc(Yard); 
+                  y = randomYLoc(Yard);
+              }
+            	sd = new SensorData(macAddr, ipv6Addr, new TPoint(x, y), FOI);
+            	if (NewSensor.equalsIgnoreCase(macAddr))
+            		floatingSensor = sd;
+              sd.updateReadings(new Reading(ts, vl));
+              sensors.enList(sd);
+            } else {
+            	if (NewSensor.equalsIgnoreCase(macAddr) && status.equalsIgnoreCase("newlyadded")) { //The new sensor
+                sd.clearData();
+                sd.FOI = FOI;
+            		sd.loc.x = randomXLoc(Yard); 
+                sd.loc.y = randomYLoc(Yard);
+                System.out.println("New sensor restarted");
+            	}
+            	
+            	//Lively change the position of the unannotated sensor based on current liveAnno
+            	if (!"Unannotated".equalsIgnoreCase(liveAnno)) {
+            		if (floatingSensor == sd) {
+            			//The position changes only when unannotated
+            			if (!liveAnno.equalsIgnoreCase(sd.FOI)) {
+	            			if ("Living-Room".equalsIgnoreCase(liveAnno)) {
+	            				floatingSensor.loc.x = randomXLoc(LivingRoom); 
+	            				floatingSensor.loc.y = randomYLoc(LivingRoom);
+		            		} else { //Bedroom
+		            			floatingSensor.loc.x = randomXLoc(BedRoom); 
+		            			floatingSensor.loc.y = randomYLoc(BedRoom);
+		            		}
+            			}
+	            		if (!"Unannotated".equalsIgnoreCase(FOI))
+	            			sd.FOI = FOI;
+	            	}
+            	}
+            	sd.updateReadings(new Reading(ts, vl));
+            }
+            /*
             if (sd == null) {
                 //Check if "8e84" is already in the list then delete it
                 if ("8e84".equalsIgnoreCase(macAddr)) {
@@ -586,15 +687,13 @@ public class THouseView extends JPanel {
                         !"Unannotated".equalsIgnoreCase(FOI)) {
                     Area area;
                     if ("Living-Room".equalsIgnoreCase(FOI)) area = LivingRoom;
-                    else
-                    if ("Kitchen".equalsIgnoreCase(FOI)) area = Kitchen;
                     else area = BedRoom;
                     sd.loc.x = area.x1+random.nextDouble()*(area.w-2*graphW)+graphW;
                     sd.loc.y = area.y1+random.nextDouble()*(area.h-(graphH+3*paddingy))+(graphH+3*paddingy)/2;
                 }
                 sd.FOI = FOI;
                 sd.updateReadings(new Reading(ts, vl));
-            }
+            }*/
            /* System.out.println("sensor "+sd.ipv6Addr.substring(sd.ipv6Addr.length()-5)
                     +": (time-"+ts+", value-"+String.format("%.2f", vl)+")"
                     +", timeL-"+sd.timeL+", timeR-"+sd.timeR+", timeR-timeL:"+(sd.timeR-sd.timeL)
