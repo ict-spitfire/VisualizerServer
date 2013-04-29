@@ -113,9 +113,9 @@ public class THouseView extends JPanel {
 	//Core stuffs
 	private final String NewSensor = "a6c";
 	private final String LivingRoomSensor1 = "8e7f";
-	private final String LivingRoomSensor2 = "2304";
+	private final String LivingRoomSensor2 = "8ed8";
 	private final String BedroomSensor1 = "a88";
-	private final String BedroomSensor2 = "a88";
+	private final String BedroomSensor2 = "2304";
 	
 	private boolean pause;
 	private long startTime;
@@ -134,6 +134,8 @@ public class THouseView extends JPanel {
 	Area LivingRoom = new Area(25, 16, 48, 54);
 	Area BedRoom = new Area(77, 16, 32, 54);
 	Area Yard = new Area(1, 10, 17, 78);
+    Area LRTop = new Area(25, 0, 48, 14);
+    Area BRTop = new Area(77, 0, 32, 14);
 		
 	private int simW, simH, areaW, areaH;
 	private double ratioW, ratioH;
@@ -148,6 +150,8 @@ public class THouseView extends JPanel {
 	private TList sensors = null;
 	private TList images = null;
 	private int imgIndex = 60;
+    private boolean foundAnnotation = false;
+    private ArrayList<String> scInfo = null, scInfoRoom = null;
 
 	public THouseView(JFrame appFrame) {
 		setBackground(Color.WHITE);
@@ -432,7 +436,7 @@ public class THouseView extends JPanel {
 
 		//Draw other information
 		double yFOI = sd.loc.y - graphH/2+0.2;
-		drawString(gr2d, (int)(sd.loc.x*ratioW), (int)(yFOI*ratioH), sd.FOI, 1.8, Color.BLUE, Color.WHITE);
+		drawString(gr2d, (int)(sd.loc.x*ratioW), (int)(yFOI*ratioH), sd.FOI, 1.3, Color.BLUE, Color.WHITE);
 		double xIPv6 = sd.loc.x;
 		double yIPv6 = sd.loc.y + graphH/2+0.1;
 		drawString(gr2d, (int)(xIPv6*ratioW), (int)(yIPv6*ratioH), "IPv6: '..."+
@@ -489,16 +493,31 @@ public class THouseView extends JPanel {
 
 		//Draw room boundaries
 		gr2d.setColor(Color.RED);
-		gr2d.drawRect((int)(LivingRoom.x1*ratioW), (int)(LivingRoom.y1*ratioH), (int)(LivingRoom.w*ratioW), (int)(LivingRoom.h*ratioH));
-		gr2d.drawRect((int)(BedRoom.x1*ratioW), (int)(BedRoom.y1*ratioH), (int)(BedRoom.w*ratioW), (int)(BedRoom.h*ratioH));
-		gr2d.drawRect((int)(Yard.x1*ratioW), (int)(Yard.y1*ratioH), (int)(Yard.w*ratioW), (int)(Yard.h*ratioH));
+		//gr2d.drawRect((int)(LivingRoom.x1*ratioW), (int)(LivingRoom.y1*ratioH), (int)(LivingRoom.w*ratioW), (int)(LivingRoom.h*ratioH));
+		//gr2d.drawRect((int)(BedRoom.x1*ratioW), (int)(BedRoom.y1*ratioH), (int)(BedRoom.w*ratioW), (int)(BedRoom.h*ratioH));
+		//gr2d.drawRect((int)(Yard.x1*ratioW), (int)(Yard.y1*ratioH), (int)(Yard.w*ratioW), (int)(Yard.h*ratioH));
+        //gr2d.drawRect((int)(LRTop.x1*ratioW), (int)(LRTop.y1*ratioH), (int)(LRTop.w*ratioW), (int)(LRTop.h*ratioH));
+        //gr2d.drawRect((int)(BRTop.x1*ratioW), (int)(BRTop.y1*ratioH), (int)(BRTop.w*ratioW), (int)(BRTop.h*ratioH));
+
+        //Draw live similarity score
+        int scX = (int)((LivingRoom.x1+LivingRoom.w/2)*ratioW);
+        int scY = (int)((76)*ratioH);
+        int currentY = scY;
+        if (scInfo != null) {
+            drawString(gr2d, scX, currentY, "LIVE SIMILARITY SCORE TO SENSOR:", 1.8, Color.RED, Color.WHITE);
+            currentY += 30;
+            for (int i=0; i<scInfo.size(); i++) {
+                drawString(gr2d, scX, currentY, scInfo.get(i), 1.8, Color.RED, Color.WHITE);
+                currentY += 30;
+            }
+        }
 
 		//Draw temperature
 		//drawTemperature(gr2d, tempX, tempY);
 
 		//Draw date and time
-		double dateX = 70;
-		double dateY = 76;
+        int dateX = (int)(BedRoom.x1+BedRoom.w/2);
+        int dateY = 76;
 		//drawDateTime(gr2d, dateX, dateY, simTimeD, simTimeH, simTimeM);
 		drawDateTimeTemp(gr2d, dateX, dateY, simTimeD, simTimeH, simTimeM);
 
@@ -563,6 +582,11 @@ public class THouseView extends JPanel {
         //Meta information
         TString parameter = new TString(command.getStrAt(0), '|');
         simTime = Integer.valueOf(parameter.getStrAt(0));
+
+        System.out.println("==========================================");
+        System.out.println("Received date: " + simTime);
+        System.out.println("==========================================");
+
         imgIndex = Integer.valueOf(parameter.getStrAt(1));
         currentTemperature = Double.valueOf(parameter.getStrAt(2));
         liveAnno = parameter.getStrAt(3);
@@ -589,6 +613,7 @@ public class THouseView extends JPanel {
         */
         
         //Sensor information
+        scInfo = new ArrayList<String>();
         for (int i=1; i<command.len(); i++) {
             parameter = new TString(command.getStrAt(i), '|');
             System.out.println("Parameter: <"+command.getStrAt(i)+">");
@@ -599,6 +624,9 @@ public class THouseView extends JPanel {
             String FOI = parameter.getStrAt(3);
             long ts = Long.valueOf(parameter.getStrAt(4)).longValue();
             double vl = Double.valueOf(parameter.getStrAt(5)).doubleValue();
+            String scStr = parameter.getStrAt(6);
+            if (!macAddr.equalsIgnoreCase(NewSensor))
+                scInfo.add(macAddr+" in `"+FOI+"' is "+scStr);
             SensorData sd = searchSensor(macAddr);
             if (sd == null) {
             	double x = 0, y = 0;
@@ -621,6 +649,7 @@ public class THouseView extends JPanel {
                   System.out.println("New node added");
                   x = randomXLoc(Yard); 
                   y = randomYLoc(Yard);
+                  foundAnnotation = false;
               }
             	sd = new SensorData(macAddr, ipv6Addr, new TPoint(x, y), FOI);
             	if (NewSensor.equalsIgnoreCase(macAddr))
@@ -629,11 +658,12 @@ public class THouseView extends JPanel {
               sensors.enList(sd);
             } else {
             	if (NewSensor.equalsIgnoreCase(macAddr) && status.equalsIgnoreCase("newlyadded")) { //The new sensor
-                sd.clearData();
-                sd.FOI = FOI;
-            		sd.loc.x = randomXLoc(Yard); 
-                sd.loc.y = randomYLoc(Yard);
-                System.out.println("New sensor restarted");
+                    sd.clearData();
+                    sd.FOI = FOI;
+                        sd.loc.x = randomXLoc(Yard);
+                    sd.loc.y = randomYLoc(Yard);
+                    foundAnnotation = false;
+                    System.out.println("New sensor restarted");
             	}
             	
             	//Lively change the position of the unannotated sensor based on current liveAnno
@@ -641,16 +671,27 @@ public class THouseView extends JPanel {
             		if (floatingSensor == sd) {
             			//The position changes only when unannotated
             			if (!liveAnno.equalsIgnoreCase(sd.FOI)) {
-	            			if ("Living-Room".equalsIgnoreCase(liveAnno)) {
-	            				floatingSensor.loc.x = randomXLoc(LivingRoom); 
-	            				floatingSensor.loc.y = randomYLoc(LivingRoom);
+	            			if ("LivingRoom".equalsIgnoreCase(liveAnno)) {
+	            				floatingSensor.loc.x = randomXLoc(LRTop);
+	            				floatingSensor.loc.y = randomYLoc(LRTop);
 		            		} else { //Bedroom
-		            			floatingSensor.loc.x = randomXLoc(BedRoom); 
-		            			floatingSensor.loc.y = randomYLoc(BedRoom);
+		            			floatingSensor.loc.x = randomXLoc(BRTop);
+		            			floatingSensor.loc.y = randomYLoc(BRTop);
 		            		}
             			}
-	            		if (!"Unannotated".equalsIgnoreCase(FOI))
+	            		if (!"Unannotated".equalsIgnoreCase(FOI)) {
 	            			sd.FOI = FOI;
+                            if (!foundAnnotation) {
+                                /*if ("LivingRoom".equalsIgnoreCase(sd.FOI)) {
+                                    sd.loc.x = randomXLoc(LivingRoom);
+                                    sd.loc.y = randomYLoc(LivingRoom);
+                                } else { //Bedroom
+                                    sd.loc.x = randomXLoc(BedRoom);
+                                    sd.loc.y = randomYLoc(BedRoom);
+                                }*/
+                                foundAnnotation = true;
+                            }
+                        }
 	            	}
             	}
             	sd.updateReadings(new Reading(ts, vl));
@@ -686,7 +727,7 @@ public class THouseView extends JPanel {
                 if ("Unannotated".equalsIgnoreCase(sd.FOI) &&
                         !"Unannotated".equalsIgnoreCase(FOI)) {
                     Area area;
-                    if ("Living-Room".equalsIgnoreCase(FOI)) area = LivingRoom;
+                    if ("LivingRoom".equalsIgnoreCase(FOI)) area = LivingRoom;
                     else area = BedRoom;
                     sd.loc.x = area.x1+random.nextDouble()*(area.w-2*graphW)+graphW;
                     sd.loc.y = area.y1+random.nextDouble()*(area.h-(graphH+3*paddingy))+(graphH+3*paddingy)/2;
