@@ -77,6 +77,10 @@ public class THouseView extends JPanel {
 		}
 		
 		private void updateReadings(Reading r) {
+            //Code for day repeatation
+            if (r.time < timeR) r.time = timeR + 15;
+            //End code*/
+
 			readings.enList(r);
 			timeL = ((Reading)(readings.get(0))).time;
 			timeR = ((Reading)(readings.get(readings.len()-1))).time;
@@ -112,10 +116,10 @@ public class THouseView extends JPanel {
 
 	//Core stuffs
 	private final String NewSensor = "a6c";
-	private final String LivingRoomSensor1 = "8e7f";
-	private final String LivingRoomSensor2 = "8ed8";
-	private final String BedroomSensor1 = "a88";
-	private final String BedroomSensor2 = "2304";
+	private final String OfficeSensor1 = "a88";
+	private final String OfficeSensor2 = "2304";
+	private final String BedroomSensor1 = "8e7f";
+	private final String BedroomSensor2 = "8ed8";
 	
 	private boolean pause;
 	private long startTime;
@@ -131,7 +135,7 @@ public class THouseView extends JPanel {
   private SensorData floatingSensor = null;  
 
 	//Coordinates of the areas
-	Area LivingRoom = new Area(25, 16, 48, 54);
+	Area Office = new Area(25, 16, 48, 54);
 	Area BedRoom = new Area(77, 16, 32, 54);
 	Area Yard = new Area(1, 10, 17, 78);
     Area LRTop = new Area(25, 0, 48, 14);
@@ -414,6 +418,19 @@ public class THouseView extends JPanel {
 			//System.out.println("sd.timeR: "+sd.timeR+", re.time: "+re.time+", time distance is "+t);
 		if (sd.readings.len() > 2) {
 			Reading first = (Reading)sd.readings.get(sd.readings.len()-1);
+
+            /*/Debug
+            System.out.println("TRatio:"+String.format("%.2f", tratio)+", sd.TimeR:"+sd.timeR+", first.time:"+first.time
+            +", substraction:"+(sd.timeR-first.time));
+            System.out.println("Current array:");
+            for (int c=0; c<sd.readings.len(); c++) {
+                double val = ((Reading)sd.readings.get(c)).value;
+                long t = ((Reading)sd.readings.get(c)).time;
+                System.out.print(String.format("(%d, %.2f), ", t, val));
+            }
+            System.out.println();
+            //End debug*/
+
 			int xdraw_old = x2-(int)((sd.timeR-first.time)*tratio);
 			//int ydraw_old = y1+H-(int)((first.value-sd.minValue)*vratio);
 			double v1 = first.value;
@@ -493,14 +510,14 @@ public class THouseView extends JPanel {
 
 		//Draw room boundaries
 		gr2d.setColor(Color.RED);
-		//gr2d.drawRect((int)(LivingRoom.x1*ratioW), (int)(LivingRoom.y1*ratioH), (int)(LivingRoom.w*ratioW), (int)(LivingRoom.h*ratioH));
+		//gr2d.drawRect((int)(Office.x1*ratioW), (int)(Office.y1*ratioH), (int)(Office.w*ratioW), (int)(Office.h*ratioH));
 		//gr2d.drawRect((int)(BedRoom.x1*ratioW), (int)(BedRoom.y1*ratioH), (int)(BedRoom.w*ratioW), (int)(BedRoom.h*ratioH));
 		//gr2d.drawRect((int)(Yard.x1*ratioW), (int)(Yard.y1*ratioH), (int)(Yard.w*ratioW), (int)(Yard.h*ratioH));
         //gr2d.drawRect((int)(LRTop.x1*ratioW), (int)(LRTop.y1*ratioH), (int)(LRTop.w*ratioW), (int)(LRTop.h*ratioH));
         //gr2d.drawRect((int)(BRTop.x1*ratioW), (int)(BRTop.y1*ratioH), (int)(BRTop.w*ratioW), (int)(BRTop.h*ratioH));
 
         //Draw live similarity score
-        int scX = (int)((LivingRoom.x1+LivingRoom.w/2)*ratioW);
+        int scX = (int)((Office.x1+ Office.w/2)*ratioW);
         int scY = (int)((76)*ratioH);
         int currentY = scY;
         if (scInfo != null) {
@@ -583,6 +600,9 @@ public class THouseView extends JPanel {
         TString parameter = new TString(command.getStrAt(0), '|');
         simTime = Integer.valueOf(parameter.getStrAt(0));
 
+        //This code is for repeatation of day 1 over again
+        //if (simTime == 360)
+
         System.out.println("==========================================");
         System.out.println("Received date: " + simTime);
         System.out.println("==========================================");
@@ -592,6 +612,7 @@ public class THouseView extends JPanel {
         liveAnno = parameter.getStrAt(3);
         System.out.println("simTime: "+simTime+", imgIndex: "+imgIndex+", temp: "+currentTemperature+", liveAnno: "+liveAnno);
 
+        // Use package as im creator
         int elapsedTimeS = (int)((double)(System.currentTimeMillis()-startTime)/(double)1000) % 60;
         int elapsedTimeM = (int)((double)(System.currentTimeMillis()-startTime)/(double)1000/(double)60) % 60;
         int elapsedTimeH = (int)((double)(System.currentTimeMillis()-startTime)/(double)1000/(double)60/(double)60) % 24;
@@ -630,21 +651,26 @@ public class THouseView extends JPanel {
             SensorData sd = searchSensor(macAddr);
             if (sd == null) {
             	double x = 0, y = 0;
-              if (LivingRoomSensor1.equalsIgnoreCase(macAddr)) {
-                  x = randomXLoc(LivingRoom); 
-                  y = randomYLoc(LivingRoom);
-              } else if (LivingRoomSensor2.equalsIgnoreCase(macAddr)) {
-                  //x = 51.5; y = 65; //Living room bottom
-                  x = randomXLoc(LivingRoom); 
-                  y = randomYLoc(LivingRoom);
+              if (OfficeSensor1.equalsIgnoreCase(macAddr)) {
+                  //x = randomXLoc(Office);
+                  //y = randomYLoc(Office);
+                  x = randomXLoc(Yard);
+                  y = randomYLoc(Yard);
+              } else if (OfficeSensor2.equalsIgnoreCase(macAddr)) {
+                  //x = randomXLoc(Office);
+                  //y = randomYLoc(Office);
+                  x = randomXLoc(Yard);
+                  y = randomYLoc(Yard);
               } else if (BedroomSensor1.equalsIgnoreCase(macAddr)) {
-                  //x = 51.5; y = 75; //Bedroom top
-              	x = randomXLoc(BedRoom); 
-                y = randomYLoc(BedRoom);
+                  //x = randomXLoc(BedRoom);
+                  //y = randomYLoc(BedRoom);
+                  x = randomXLoc(Yard);
+                  y = randomYLoc(Yard);
               } else if (BedroomSensor2.equalsIgnoreCase(macAddr)) {
-                  //x = 51.5; y = 85; //Bedroom bottom
-              	x = randomXLoc(BedRoom); 
-                y = randomYLoc(BedRoom);
+              	//x = randomXLoc(BedRoom);
+                //y = randomYLoc(BedRoom);
+                  x = randomXLoc(Yard);
+                  y = randomYLoc(Yard);
               } else if (NewSensor.equalsIgnoreCase(macAddr)) { //The new sensor
                   System.out.println("New node added");
                   x = randomXLoc(Yard); 
@@ -671,7 +697,7 @@ public class THouseView extends JPanel {
             		if (floatingSensor == sd) {
             			//The position changes only when unannotated
             			if (!liveAnno.equalsIgnoreCase(sd.FOI)) {
-	            			if ("LivingRoom".equalsIgnoreCase(liveAnno)) {
+	            			if ("office".equalsIgnoreCase(liveAnno)) {
 	            				floatingSensor.loc.x = randomXLoc(LRTop);
 	            				floatingSensor.loc.y = randomYLoc(LRTop);
 		            		} else { //Bedroom
@@ -682,9 +708,9 @@ public class THouseView extends JPanel {
 	            		if (!"Unannotated".equalsIgnoreCase(FOI)) {
 	            			sd.FOI = FOI;
                             if (!foundAnnotation) {
-                                /*if ("LivingRoom".equalsIgnoreCase(sd.FOI)) {
-                                    sd.loc.x = randomXLoc(LivingRoom);
-                                    sd.loc.y = randomYLoc(LivingRoom);
+                                /*if ("Office".equalsIgnoreCase(sd.FOI)) {
+                                    sd.loc.x = randomXLoc(Office);
+                                    sd.loc.y = randomYLoc(Office);
                                 } else { //Bedroom
                                     sd.loc.x = randomXLoc(BedRoom);
                                     sd.loc.y = randomYLoc(BedRoom);
@@ -727,7 +753,7 @@ public class THouseView extends JPanel {
                 if ("Unannotated".equalsIgnoreCase(sd.FOI) &&
                         !"Unannotated".equalsIgnoreCase(FOI)) {
                     Area area;
-                    if ("LivingRoom".equalsIgnoreCase(FOI)) area = LivingRoom;
+                    if ("Office".equalsIgnoreCase(FOI)) area = Office;
                     else area = BedRoom;
                     sd.loc.x = area.x1+random.nextDouble()*(area.w-2*graphW)+graphW;
                     sd.loc.y = area.y1+random.nextDouble()*(area.h-(graphH+3*paddingy))+(graphH+3*paddingy)/2;
