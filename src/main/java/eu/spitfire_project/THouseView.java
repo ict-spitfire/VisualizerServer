@@ -153,7 +153,7 @@ public class THouseView extends JPanel {
 
 	private TList sensors = null;
 	private TList images = null;
-	private int imgIndex = 60;
+	private int imgIndex = 24;
     private boolean foundAnnotation = false;
     private ArrayList<String> scInfo = null, scInfoRoom = null;
 
@@ -698,11 +698,15 @@ public class THouseView extends JPanel {
             			//The position changes only when unannotated
             			if (!liveAnno.equalsIgnoreCase(sd.FOI)) {
 	            			if ("office".equalsIgnoreCase(liveAnno)) {
-	            				floatingSensor.loc.x = randomXLoc(LRTop);
-	            				floatingSensor.loc.y = randomYLoc(LRTop);
+	            				//floatingSensor.loc.x = randomXLoc(LRTop);
+	            				//floatingSensor.loc.y = randomYLoc(LRTop);
+                                floatingSensor.loc.x = LRTop.x1+LRTop.w/2;
+                                floatingSensor.loc.y = LRTop.y1+LRTop.h/3;
 		            		} else { //Bedroom
-		            			floatingSensor.loc.x = randomXLoc(BRTop);
-		            			floatingSensor.loc.y = randomYLoc(BRTop);
+		            			//floatingSensor.loc.x = randomXLoc(BRTop);
+		            			//floatingSensor.loc.y = randomYLoc(BRTop);
+                                floatingSensor.loc.x = BRTop.x1+BRTop.w/2;
+                                floatingSensor.loc.y = BRTop.y1+BRTop.h/3;
 		            		}
             			}
 	            		if (!"Unannotated".equalsIgnoreCase(FOI)) {
