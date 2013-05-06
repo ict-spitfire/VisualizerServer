@@ -48,6 +48,11 @@ public class VisualizerServer {
     }
 
     public static void main(String args[]) {
+
+		appFrame.setUndecorated(true);
+		appFrame.setAlwaysOnTop(true);
+		appFrame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+
         appFrame.setMinimumSize(new Dimension(800, 480));
         appFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         //Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
