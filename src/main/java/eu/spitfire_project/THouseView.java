@@ -118,8 +118,8 @@ public class THouseView extends JPanel {
 	private final String NewSensor = "a6c";
 	private final String OfficeSensor1 = "a88";
 	private final String OfficeSensor2 = "2304";
-	private final String BedroomSensor1 = "8e7f";
-	private final String BedroomSensor2 = "8ed8";
+	private final String BedroomSensor2 = "8e7f";
+	private final String BedroomSensor1 = "8ed8";
 	
 	private boolean pause;
 	private long startTime;
@@ -140,6 +140,11 @@ public class THouseView extends JPanel {
 	Area Yard = new Area(1, 10, 17, 78);
     Area LRTop = new Area(25, 0, 48, 14);
     Area BRTop = new Area(77, 0, 32, 14);
+
+    Area office1 = new Area(43, 25, 10, 7);
+    Area office2 = new Area(52, 55, 10, 7);
+    Area bedroom1 = new Area(100, 25, 10, 7);
+    Area bedroom2 = new Area(100, 55, 10, 7);
 		
 	private int simW, simH, areaW, areaH;
 	private double ratioW, ratioH;
@@ -381,14 +386,31 @@ public class THouseView extends JPanel {
 		int sw = fm.stringWidth(st);
 		int X = x-sw/2;
 		int Y = y+FontSize;
-    gr2d.setColor(brdColor);
-    gr2d.drawString(st, X-1, Y-1);
-    gr2d.drawString(st, X-1, Y+1);
-    gr2d.drawString(st, X+1, Y-1);
-    gr2d.drawString(st, X+1, Y+1);
-    gr2d.setColor(txtColor);
-    gr2d.drawString(st, X, Y);
+        gr2d.setColor(brdColor);
+        gr2d.drawString(st, X-1, Y-1);
+        gr2d.drawString(st, X-1, Y+1);
+        gr2d.drawString(st, X+1, Y-1);
+        gr2d.drawString(st, X+1, Y+1);
+        gr2d.setColor(txtColor);
+        gr2d.drawString(st, X, Y);
 	}
+
+    public void drawString1(Graphics2D gr2d, int x, int y, String st, double fontSize, Color txtColor, Color brdColor) {
+        int FontSize = (int)(fontSize*ratioH);
+        Font font = new Font("Arial", Font.BOLD, FontSize);
+        FontMetrics fm = getFontMetrics(font);
+        gr2d.setFont(font);
+        int sw = fm.stringWidth(st);
+        int X = x;
+        int Y = y+FontSize;
+        gr2d.setColor(brdColor);
+        gr2d.drawString(st, X-1, Y-1);
+        gr2d.drawString(st, X-1, Y+1);
+        gr2d.drawString(st, X+1, Y-1);
+        gr2d.drawString(st, X+1, Y+1);
+        gr2d.setColor(txtColor);
+        gr2d.drawString(st, X, Y);
+    }
 
 	public void drawSensor(Graphics2D gr2d, SensorData sd) {
 		//simulated coordinate
@@ -490,9 +512,9 @@ public class THouseView extends JPanel {
 		int tempy = (int)((dateY+5)*ratioH);
 		int curTemp = (int)currentTemperature;
 		//drawString(gr2d, datex, datey, String.format("TIME: %d:%d", HH, MM), 2, Color.BLACK, new Color(153, 175, 162));
-		drawString(gr2d, timex, datey, String.format("DAY - %d", DD), 2, Color.RED, Color.WHITE);
-		drawString(gr2d, timex, timey, String.format("TIME - %02d:%02d", HH, MM), 2, Color.RED, Color.WHITE);
-		drawString(gr2d, timex, tempy, String.format("TEMPERATURE - %d", curTemp)+"°C", 2.5, Color.RED, Color.WHITE);
+		drawString(gr2d, timex, datey, String.format("DAY - %d", DD), 2, Color.WHITE, Color.BLACK);
+		drawString(gr2d, timex, timey, String.format("TIME - %02d:%02d", HH, MM), 2, Color.WHITE, Color.BLACK);
+		drawString(gr2d, timex, tempy, String.format("TEMPERATURE - %d", curTemp)+"°C", 2.5, Color.WHITE, Color.BLACK);
 	}
 
 	@Override
@@ -515,16 +537,21 @@ public class THouseView extends JPanel {
 		//gr2d.drawRect((int)(Yard.x1*ratioW), (int)(Yard.y1*ratioH), (int)(Yard.w*ratioW), (int)(Yard.h*ratioH));
         //gr2d.drawRect((int)(LRTop.x1*ratioW), (int)(LRTop.y1*ratioH), (int)(LRTop.w*ratioW), (int)(LRTop.h*ratioH));
         //gr2d.drawRect((int)(BRTop.x1*ratioW), (int)(BRTop.y1*ratioH), (int)(BRTop.w*ratioW), (int)(BRTop.h*ratioH));
+        //gr2d.drawRect((int)(office1.x1*ratioW), (int)(office1.y1*ratioH), (int)(office1.w*ratioW), (int)(office1.h*ratioH));
+        //gr2d.drawRect((int)(office2.x1*ratioW), (int)(office2.y1*ratioH), (int)(office2.w*ratioW), (int)(office2.h*ratioH));
+        //gr2d.drawRect((int)(bedroom1.x1*ratioW), (int)(bedroom1.y1*ratioH), (int)(bedroom1.w*ratioW), (int)(bedroom1.h*ratioH));
+        //gr2d.drawRect((int)(bedroom2.x1*ratioW), (int)(bedroom2.y1*ratioH), (int)(bedroom2.w*ratioW), (int)(bedroom2.h*ratioH));
 
         //Draw live similarity score
         int scX = (int)((Office.x1+ Office.w/2)*ratioW);
         int scY = (int)((76)*ratioH);
         int currentY = scY;
         if (scInfo != null) {
-            drawString(gr2d, scX, currentY, "LIVE SIMILARITY SCORE TO SENSOR:", 1.8, Color.RED, Color.WHITE);
+            drawString(gr2d, scX+(int)(Office.w/4*ratioW), currentY, "LIVE SIMILARITY SCORE TO SENSOR:", 1.8, Color.WHITE, Color.BLACK);
             currentY += 30;
             for (int i=0; i<scInfo.size(); i++) {
-                drawString(gr2d, scX, currentY, scInfo.get(i), 1.8, Color.RED, Color.WHITE);
+                //drawString(gr2d, scX, currentY, scInfo.get(i), 1.8, Color.RED, Color.WHITE);
+                drawString1(gr2d, scX, currentY, scInfo.get(i), 1.8, Color.WHITE, Color.BLACK);
                 currentY += 30;
             }
         }
@@ -654,23 +681,23 @@ public class THouseView extends JPanel {
               if (OfficeSensor1.equalsIgnoreCase(macAddr)) {
                   //x = randomXLoc(Office);
                   //y = randomYLoc(Office);
-                  x = randomXLoc(Yard);
-                  y = randomYLoc(Yard);
+                  x = office1.x1+office1.w/2;
+                  y = office1.y1+office1.h/2;
               } else if (OfficeSensor2.equalsIgnoreCase(macAddr)) {
                   //x = randomXLoc(Office);
                   //y = randomYLoc(Office);
-                  x = randomXLoc(Yard);
-                  y = randomYLoc(Yard);
+                  x = office2.x1+office2.w/2;
+                  y = office2.y1+office2.h/2;
               } else if (BedroomSensor1.equalsIgnoreCase(macAddr)) {
                   //x = randomXLoc(BedRoom);
                   //y = randomYLoc(BedRoom);
-                  x = randomXLoc(Yard);
-                  y = randomYLoc(Yard);
+                  x = bedroom1.x1+bedroom1.w/2;
+                  y = bedroom1.y1+bedroom1.h/2;
               } else if (BedroomSensor2.equalsIgnoreCase(macAddr)) {
               	//x = randomXLoc(BedRoom);
                 //y = randomYLoc(BedRoom);
-                  x = randomXLoc(Yard);
-                  y = randomYLoc(Yard);
+                  x = bedroom2.x1+bedroom2.w/2;
+                  y = bedroom2.y1+bedroom2.h/2;
               } else if (NewSensor.equalsIgnoreCase(macAddr)) { //The new sensor
                   System.out.println("New node added");
                   x = randomXLoc(Yard); 
